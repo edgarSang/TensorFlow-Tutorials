@@ -4,6 +4,7 @@
 import tensorflow as tf
 import numpy as np
 import re
+import codecs
 
 from config import FLAGS
 
@@ -20,6 +21,7 @@ class Dialog():
     _EOS_ID_ = 2
     _UNK_ID_ = 3
     _PRE_DEFINED_ = [_PAD_ID_, _STA_ID_, _EOS_ID_, _UNK_ID_]
+    isDbg = False
 
     def __init__(self):
         self.vocab_list = []
@@ -94,7 +96,10 @@ class Dialog():
 
         enc_input = np.eye(self.vocab_size)[enc_input]
         dec_input = np.eye(self.vocab_size)[dec_input]
-
+        if not self.isDbg :
+            print("enc_input(eye)=",enc_input)
+            print("enc_input(eye)[0]=",enc_input[0])
+            self.isDbg=True
         return enc_input, dec_input, target
 
     def next_batch(self, batch_size):
@@ -152,7 +157,9 @@ class Dialog():
     def load_examples(self, data_path):
         self.examples = []
 
-        with open(data_path, 'r') as content_file:
+
+        #with open(data_path, 'r') as content_file:
+        with codecs.open(data_path,'r', encoding='UTF-8') as content_file:
             for line in content_file:
                 tokens = self.tokenizer(line.strip())
                 ids = self.tokens_to_ids(tokens)
@@ -161,7 +168,8 @@ class Dialog():
     def tokenizer(self, sentence):
         # 공백으로 나누고 특수문자는 따로 뽑아낸다.
         words = []
-        _TOKEN_RE_ = re.compile(b"([.,!?\"':;)(])")
+        #_TOKEN_RE_ = re.compile(b"([.,!?\"':;)(])")
+        _TOKEN_RE_ = re.compile(u"([.,!?\"':;)(])")
 
         for fragment in sentence.strip().split():
             words.extend(_TOKEN_RE_.split(fragment))
@@ -169,7 +177,8 @@ class Dialog():
         return [w for w in words if w]
 
     def build_vocab(self, data_path, vocab_path):
-        with open(data_path, 'r') as content_file:
+        #with open(data_path, 'r') as content_file:
+        with codecs.open(data_path,'r', encoding='UTF-8') as content_file:
             content = content_file.read()
             words = self.tokenizer(content)
             words = list(set(words))
@@ -181,35 +190,37 @@ class Dialog():
     def load_vocab(self, vocab_path):
         self.vocab_list = self._PRE_DEFINED_ + []
 
-        with open(vocab_path, 'r') as vocab_file:
+        #with open(vocab_path, 'r') as vocab_file:
+        with codecs.open(vocab_path,'r', encoding='UTF-8') as vocab_file:
             for line in vocab_file:
                 self.vocab_list.append(line.strip())
 
         # {'_PAD_': 0, '_STA_': 1, '_EOS_': 2, '_UNK_': 3, 'Hello': 4, 'World': 5, ...}
         self.vocab_dict = {n: i for i, n in enumerate(self.vocab_list)}
         self.vocab_size = len(self.vocab_list)
+        print("load_voca: size=",self.vocab_size)
 
 
 def main(_):
     dialog = Dialog()
 
     if FLAGS.data_path and FLAGS.voc_test:
-        print "다음 데이터로 어휘 사전을 테스트합니다.", FLAGS.data_path
+        print ("다음 데이터로 어휘 사전을 테스트합니다.", FLAGS.data_path)
         dialog.load_vocab(FLAGS.voc_path)
         dialog.load_examples(FLAGS.data_path)
 
         enc, dec, target = dialog.next_batch(10)
-        print target
+        print ( target)
         enc, dec, target = dialog.next_batch(10)
-        print target
+        print (target)
 
     elif FLAGS.data_path and FLAGS.voc_build:
-        print "다음 데이터에서 어휘 사전을 생성합니다.", FLAGS.data_path
+        print ("다음 데이터에서 어휘 사전을 생성합니다.", FLAGS.data_path)
         dialog.build_vocab(FLAGS.data_path, FLAGS.voc_path)
 
     elif FLAGS.voc_test:
         dialog.load_vocab(FLAGS.voc_path)
-        print dialog.vocab_dict
+        print ( dialog.vocab_dict)
 
 
 if __name__ == "__main__":
